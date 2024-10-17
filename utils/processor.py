@@ -25,13 +25,13 @@ class ImageAnnotatorModel:
         """Agregar una nueva caja delimitadora a la lista"""
         self.bounding_boxes.append(bbox)
     
-    def save_annotations(self):
+    def save_annotations(self, mode="w"):
         """Guardar las anotaciones en formato YOLO"""
         # Usar el mismo nombre de imagen pero con extensión .txt
         filename = os.path.basename(self.image_path).replace('.jpg', '.txt')  # Cambiar según la extensión de la imagen
         output_path = os.path.join(self.output_dir, filename)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, mode=mode) as f:
             for bbox in self.bounding_boxes:
                 # Obtener coordenadas de la caja y normalizarlas
                 x1, y1, x2, y2 = bbox.get_coordinates()
@@ -50,6 +50,13 @@ class ImageAnnotatorView:
         self.start_point = None
         self.end_point = None
         self.current_image = model.image.copy()
+        self.current_box = None
+
+    def draw_existing_boxes(self):
+        """Dibujar todas las cajas ya existentes"""
+        for bbox in self.model.bounding_boxes:
+            x1, y1, x2, y2 = bbox.get_coordinates()
+            cv2.rectangle(self.current_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     def draw_box(self, event, x, y, flags, param):
         """Función callback del mouse para dibujar cajas delimitadoras"""
@@ -60,14 +67,15 @@ class ImageAnnotatorView:
         elif event == cv2.EVENT_MOUSEMOVE:
             if self.drawing:
                 self.current_image = self.model.image.copy()
+                self.draw_existing_boxes()
                 cv2.rectangle(self.current_image, self.start_point, (x, y), (0, 255, 0), 2)
         
         elif event == cv2.EVENT_LBUTTONUP:
             self.drawing = False
             self.end_point = (x, y)
             cv2.rectangle(self.current_image, self.start_point, self.end_point, (0, 255, 0), 2)
-            bbox = BoundingBox(self.start_point[0], self.start_point[1], self.end_point[0], self.end_point[1])
-            self.model.add_bounding_box(bbox)
+            self.current_box = BoundingBox(self.start_point[0], self.start_point[1], self.end_point[0], self.end_point[1])
+
 
     def display_image(self):
         """Mostrar la imagen y registrar el callback del mouse"""
@@ -79,6 +87,11 @@ class ImageAnnotatorView:
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):  # Presiona 'q' para salir
                 break
+            elif key == ord('c'):
+                self.command = True
+                self.model.add_bounding_box(self.current_box)
+                self.model.save_annotations('a')
+                self.current_box = None
             elif key == ord('s'):  # Presiona 's' para guardar anotaciones
                 self.model.save_annotations()
                 print("Annotations saved!")
