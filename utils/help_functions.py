@@ -17,7 +17,7 @@ def crop_images(image_paths: List[Path],
         crop_size (Tuple[int, int], optional): The target size for cropping
           (width, height)  Defaults to (640, 640).
         overlap (int, optional): Overlap size between crops to achieve
-          additional tiles. Defaults to 320.
+          additional tiles. Defaults to 0.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -43,7 +43,7 @@ def crop_images(image_paths: List[Path],
             print(f"Total crops for {img_path.name}: {crop_count}")
 
 if __name__ == "__main__":
-    RAW_DATA_PATH = Path("data/raw")
+    RAW_DATA_PATH = Path("data/selection")
     image_paths = list(RAW_DATA_PATH.glob('*.JPG'))
     output_directory = Path("data/cropped_images")
-    crop_images(image_paths, output_directory)
+    crop_images(image_paths, output_directory, overlap=0)
