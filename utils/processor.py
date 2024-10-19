@@ -164,6 +164,7 @@ class ImageAnnotatorController:
     def run_multiple_annotations(self):
 
         for path_image in self.list_images:
+            print(f"The path image is: {path_image}")
             self.model = ImageAnnotatorModel(
                 path_image, self.path_labels_cropped)
             self.view = ImageAnnotatorView(self.model)
