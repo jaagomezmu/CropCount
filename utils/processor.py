@@ -53,26 +53,51 @@ class ImageAnnotatorModel:
 
 
 class ImageAnnotatorView:
-    def __init__(self, model):
+    def __init__(self, model, harcoded=False):
         self.model = model
         self.drawing = False
         self.start_point = None
         self.end_point = None
         self.current_image = model.image.copy()
         self.current_box = None
+        self.harcoded = harcoded
 
     def draw_existing_boxes(self):
         """Dibujar todas las cajas ya existentes"""
-        for bbox in self.model.bounding_boxes:
-            x1, y1, x2, y2 = bbox.get_coordinates()
-            cv2.rectangle(self.current_image, (x1, y1),
-                          (x2, y2), (0, 255, 255), 1)
+        if self.harcoded:
+            with open("data/cropped_labels/" + self.harcoded, mode="r") as f:
+                lines = f.read().splitlines()
+
+                for line in lines:
+                    xc, yc, w, h = str(line).split(" ")[1:]
+                    w = float(w) * 640
+                    h = float(h) * 640
+                    x1 = float(xc)*640 - (w/2)
+                    y1 = float(yc)*640 - (h/2)
+                    x2 = x1 + float(w)
+                    y2 = y1 + float(h)
+                    self.model.bounding_boxes.append(
+                        BoundingBox(x1=int(x1), y1=int(y1), x2=int(x2), y2=int(y2))
+                    )
+
+            for bbox in self.model.bounding_boxes:
+                x1, y1, x2, y2 = bbox.get_coordinates()
+                cv2.rectangle(self.current_image, (x1, y1),
+                              (x2, y2), (0, 255, 255), 1)
+            self.harcoded = None
+        else:
+            for bbox in self.model.bounding_boxes:
+                x1, y1, x2, y2 = bbox.get_coordinates()
+                cv2.rectangle(self.current_image, (x1, y1),
+                              (x2, y2), (0, 255, 255), 1)
+
 
     def draw_box(self, event, x, y, flags, param):
         """Función callback del mouse para dibujar cajas delimitadoras"""
         if event == cv2.EVENT_LBUTTONDOWN:
             self.drawing = True
             self.start_point = (x, y)
+            print(x, y)
 
         elif event == cv2.EVENT_MOUSEMOVE:
             if self.drawing:
@@ -97,6 +122,9 @@ class ImageAnnotatorView:
         """Mostrar la imagen y registrar el callback del mouse"""
         cv2.namedWindow('Image Annotator')
         cv2.setMouseCallback('Image Annotator', self.draw_box)
+
+        if self.harcoded:
+            self.draw_existing_boxes()
 
         while True:
             cv2.imshow('Image Annotator', self.current_image)
@@ -123,8 +151,10 @@ class ImageAnnotatorController:
         path_images_cropped,
         path_labels_cropped,
         batch_size=1,
+        harcoded=None
     ):
         self.batch_size = batch_size
+        self.harcoded = harcoded
         self.path_labels_cropped = path_labels_cropped
         self.path_images_cropped = self.validate_images_path(
             path_images_cropped)
@@ -144,18 +174,21 @@ class ImageAnnotatorController:
 
     def find_available_paths(self, path_labels_cropped):
 
-        path_ = self.validate_images_path(path_labels_cropped, format=None)
+        if self.harcoded:
+            print(f"{[self.path_images_cropped / self.harcoded]}")
+            return [self.path_images_cropped / self.harcoded]
+        else:
+            path_ = self.validate_images_path(path_labels_cropped, format=None)
 
-        labels_list = [x.stem for x in list(path_.glob("*.txt"))]
-        path_images = [x.stem for x in list(
-            self.path_images_cropped.glob("*.jpg"))]
-        filenames = [x for x in path_images if x not in labels_list]
-        list_images = [
-            self.path_images_cropped / f"{x}.jpg" for x in filenames
-        ]
-        list_images = [x for x in list_images if x.exists()]
-
-        return random.sample(list_images, self.batch_size)
+            labels_list = [x.stem for x in list(path_.glob("*.txt"))]
+            path_images = [x.stem for x in list(
+                self.path_images_cropped.glob("*.jpg"))]
+            filenames = [x for x in path_images if x not in labels_list]
+            list_images = [
+                self.path_images_cropped / f"{x}.jpg" for x in filenames
+            ]
+            list_images = [x for x in list_images if x.exists()]
+            return random.sample(list_images, self.batch_size)
 
     def run(self):
         """Ejecutar la herramienta de anotación"""
@@ -165,7 +198,14 @@ class ImageAnnotatorController:
 
         for path_image in self.list_images:
             print(f"The path image is: {path_image}")
-            self.model = ImageAnnotatorModel(
-                path_image, self.path_labels_cropped)
-            self.view = ImageAnnotatorView(self.model)
+            if self.harcoded:
+                image_path = path_image.stem + ".jpg"
+                image_path = self.path_images_cropped / image_path
+                self.model = ImageAnnotatorModel(
+                    image_path, self.path_labels_cropped)
+                self.view = ImageAnnotatorView(self.model, harcoded=self.harcoded)
+            else:
+                self.model = ImageAnnotatorModel(
+                    path_image, self.path_labels_cropped)
+                self.view = ImageAnnotatorView(self.model, harcoded=False)
             self.run()
