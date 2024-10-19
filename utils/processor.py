@@ -105,9 +105,10 @@ class ImageAnnotatorView:
                 break
             elif key == ord('c'):
                 self.command = True
-                self.model.add_bounding_box(self.current_box)
-                self.model.save_annotations('a')
-                self.current_box = None
+                if self.current_box:
+                    self.model.add_bounding_box(self.current_box)
+                    self.model.save_annotations('a')
+                    self.current_box = None
             elif key == ord('s'):  # Presiona 's' para guardar anotaciones
                 self.model.save_annotations()
                 print("Annotations saved!")
