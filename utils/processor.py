@@ -66,7 +66,7 @@ class ImageAnnotatorView:
         for bbox in self.model.bounding_boxes:
             x1, y1, x2, y2 = bbox.get_coordinates()
             cv2.rectangle(self.current_image, (x1, y1),
-                          (x2, y2), (0, 255, 0), 2)
+                          (x2, y2), (0, 255, 255), 1)
 
     def draw_box(self, event, x, y, flags, param):
         """Función callback del mouse para dibujar cajas delimitadoras"""
@@ -79,13 +79,13 @@ class ImageAnnotatorView:
                 self.current_image = self.model.image.copy()
                 self.draw_existing_boxes()
                 cv2.rectangle(self.current_image,
-                              self.start_point, (x, y), (0, 255, 0), 2)
+                              self.start_point, (x, y), (0, 0, 255), 1)
 
         elif event == cv2.EVENT_LBUTTONUP:
             self.drawing = False
             self.end_point = (x, y)
             cv2.rectangle(self.current_image, self.start_point,
-                          self.end_point, (0, 255, 0), 2)
+                          self.end_point, (0, 0, 255), 1)
             self.current_box = BoundingBox(
                 self.start_point[0],
                 self.start_point[1],
